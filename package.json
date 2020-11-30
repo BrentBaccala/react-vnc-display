@@ -40,7 +40,7 @@
     "react-dom": "^16.2.0"
   },
   "dependencies": {
-    "novnc-node": "^0.5.3",
+    "@novnc/novnc": "^1.2.0",
     "prop-types": "^15.6.1"
   }
 }

@@ -1,6 +1,21 @@
 import { Component } from 'react';
 import { arrayOf, string, bool, func, number, object } from 'prop-types';
-import { RFB } from 'novnc-node';
+import RFB from '@novnc/novnc/core/rfb';
+
+/**
+ * Map noVNC event names to properties on the React component.
+ */
+
+const events = {
+  connect: 'onConnect',
+  credentialsrequired: 'onCredentialsRequired',
+  securityfailure: 'onSecurityFailure',
+  disconnect: 'onDisconnect',
+  capabilities: 'onCapabilities',
+  clipboard: 'onClipboard',
+  bell: 'onBell',
+  desktopname: 'onDesktopName',
+};
 
 /**
  * React component to connect and display a remote VNC connection.
@@ -33,17 +48,25 @@ export default class VncDisplay extends Component {
      */
     wsProtocols: arrayOf(string),
     /**
+     * Execute a function when the VNC connection connects.
+     */
+    onConnect: func,
+    /**
+     * Execute a function when the VNC connection disconnects.
+     */
+    onDisconnect: func,
+    /**
+     * Execute a function when the VNC security handshake fails.
+     */
+    onSecurityFailure: func,
+    /**
      * Execute a function when the VNC connection's clipboard updates.
      */
     onClipboard: func,
     /**
-     * Execute a function when the state of the VNC connection changes.
+     * Execute a function when VNC credentials are required.
      */
-    onUpdateState: func,
-    /**
-     * Execute a function when the password of the VNC is required.
-     */
-    onPasswordRequired: func,
+    onCredentialsdRequired: func,
     /**
      * Execute a function when an alert is raised on the VNC connection.
      */
@@ -77,9 +100,11 @@ export default class VncDisplay extends Component {
     disconnectTimeout: 5,
     width: 1280,
     height: 720,
+    onConnect: null,
+    onDisconnect: null,
+    onSecurityFailure: null,
     onClipboard: null,
-    onUpdateState: null,
-    onPasswordRequired: null,
+    onCredentialsRequired: null,
     onBell: null,
     onDesktopName: null,
     shared: false,
@@ -130,12 +155,17 @@ export default class VncDisplay extends Component {
       ...opts
     } = this.props;
 
-    this.rfb = new RFB({
-      ...opts,
-      encrypt: encrypt !== null ? encrypt : url.startsWith('wss:'),
-      target: this.canvas,
+    this.rfb = new RFB(this.canvas, url, opts);
+
+    this.rfb.scaleViewport = true;
+
+    Object.entries(events).forEach(([event, propertyName]) => {
+      if (propertyName in this.props && this.props[propertyName] != null) {
+        this.rfb.addEventListener(event, () => {
+          this.props[propertyName]();
+        });
+      }
     });
-    this.rfb.connect(url);
   };
 
   registerChild = ref => {
@@ -148,8 +178,7 @@ export default class VncDisplay extends Component {
     }
 
     document.activeElement && document.activeElement.blur();
-    this.rfb.get_keyboard().grab();
-    this.rfb.get_mouse().grab();
+    this.rfb.focus();
   };
 
   handleMouseLeave = () => {
@@ -157,13 +186,12 @@ export default class VncDisplay extends Component {
       return;
     }
 
-    this.rfb.get_keyboard().ungrab();
-    this.rfb.get_mouse().ungrab();
+    this.rfb.blur();
   };
 
   render() {
     return (
-      <canvas
+      <div
         style={this.props.style}
         ref={this.registerChild}
         onMouseEnter={this.handleMouseEnter}
