@@ -8,13 +8,13 @@ import RFB from '@novnc/novnc/core/rfb';
 
 const events = {
   connect: 'onConnect',
+  disconnect: 'onDisconnect',
   credentialsrequired: 'onCredentialsRequired',
   securityfailure: 'onSecurityFailure',
-  disconnect: 'onDisconnect',
-  capabilities: 'onCapabilities',
   clipboard: 'onClipboard',
   bell: 'onBell',
   desktopname: 'onDesktopName',
+  capabilities: 'onCapabilities',
 };
 
 /**
@@ -32,17 +32,17 @@ export default class VncDisplay extends Component {
      */
     style: object,
     /**
-     * Set the width of the canvas element.
+     * If `style` is not specified, set the width of the canvas element.
+     * If `style` is specified, `style` takes precedence and `width` must
+     * be set in `style`.  Default is 1280.
      */
     width: number,
     /**
-     * Set the height of the canvas element.
+     * If `style` is not specified, set the height of the canvas element.
+     * If `style` is specified, `style` takes precedence and `height` must
+     * be set in `style`.  Default is 720.
      */
     height: number,
-    /**
-     * Force a URL to be communicated with as encrypted.
-     */
-    encrypt: bool,
     /**
      * Specify a list of WebSocket protocols this connection should support.
      */
@@ -56,6 +56,10 @@ export default class VncDisplay extends Component {
      */
     onDisconnect: func,
     /**
+     * Execute a function when VNC credentials are required.
+     */
+    onCredentialsdRequired: func,
+    /**
      * Execute a function when the VNC security handshake fails.
      */
     onSecurityFailure: func,
@@ -63,10 +67,6 @@ export default class VncDisplay extends Component {
      * Execute a function when the VNC connection's clipboard updates.
      */
     onClipboard: func,
-    /**
-     * Execute a function when VNC credentials are required.
-     */
-    onCredentialsdRequired: func,
     /**
      * Execute a function when an alert is raised on the VNC connection.
      */
@@ -76,38 +76,96 @@ export default class VncDisplay extends Component {
      */
     onDesktopName: func,
     /**
-     * Specify the connection timeout for the VNC connection.
-     */
-    connectTimeout: number,
-    /**
-     * Specify the timeout for disconnection of the VNC connection.
-     */
-    disconnectTimeout: number,
-    /**
-     * Specify whether a VNC connection should disconnect other connections
-     * before connecting.
+     * Specify whether the VNC connection should be shared or should disconnect
+     * other connections before connecting.  Default is true.
      */
     shared: bool,
+    /**
+     * Specify if events (e.g. key presses or mouse movement) should be
+     * prevented from being sent to the server.  Default is false.
+     */
+    viewOnly: bool,
+    /**
+     * Specify if keyboard focus should automatically be moved to the remote
+     * session when a `mousedown` or `touchstart` event is received.
+     * Default is true.
+     */
+    focusOnClick: bool,
+    /**
+     * Specify if the remote session should be clipped to its container.  When
+     * disabled scrollbars are shown.  Default is false.
+     */
+    clipViewport: bool,
+    /**
+     * Specify if mouse events should control the relative position of a
+     * clipped remote session. Only relevant if `clipViewport` is enabled.
+     * Default is false.
+     */
+    dragViewport: bool,
+    /**
+     * Specify if the remote session should be scaled locally so it fits its
+     * container.  When disabled it will be centered if the remote session is
+     * smaller than its container, or handled according to `clipViewport` if it
+     * is larger.  Default is false.
+     */
+    scaleViewport: bool,
+    /**
+     * Specify if a request to resize the remote session should be sent whenever
+     * the container changes dimensions.  Default is false.
+     */
+    resizeSession: bool,
+    /**
+     * Specify if a dot cursor should be shown instead of a zero-sized or
+     * fully-transparent cursor if the server sets such invisible cursor.
+     * Default is false.
+     */
+    showDotCursor: bool,
+    /**
+     * Specify a valid CSS background style value indicating which background
+     * style should be applied to the element containing the remote session
+     * screen.  Default is "rgb(40, 40, 40)" (solid gray color).
+     */
+    background: string,
+    /**
+     * An int in range [0-9] controlling the desired JPEG quality. Value 0
+     * implies low quality and 9 implies high quality. Default value is 6.
+     */
+    qualityLevel: number,
+    /**
+     * An int in range [0-9] controlling the desired compression level. Value 0
+     * means no compression. Level 1 uses a minimum of CPU resources and
+     * achieves weak compression ratios, while level 9 offers best compression
+     * but is slow in terms of CPU consumption on the server side. Use high
+     * levels with very slow network connections. Default value is 2.
+     */
+    compressionLevel: number,
   };
 
   static defaultProps = {
     style: null,
-    encrypt: null,
     wsProtocols: ['binary'],
     trueColor: true,
     localCursor: true,
-    connectTimeout: 5,
-    disconnectTimeout: 5,
     width: 1280,
     height: 720,
     onConnect: null,
     onDisconnect: null,
+    onCredentialsRequired: null,
     onSecurityFailure: null,
     onClipboard: null,
-    onCredentialsRequired: null,
     onBell: null,
     onDesktopName: null,
-    shared: false,
+    shared: null,
+    viewOnly: null,
+    focusOnClick: null,
+    clipViewport: null,
+    dragViewport: null,
+    scaleViewport: null,
+    resizeSession: null,
+    showDotCursor: null,
+    background: null,
+    qualityLevel: null,
+    compressionLevel: null,
   };
 
   componentDidMount() {
@@ -146,18 +204,41 @@ export default class VncDisplay extends Component {
     }
 
     const {
-      name,
-      connectTimeout,
       url,
-      width,
-      height,
-      encrypt,
-      ...opts
+      viewOnly,
+      focusOnClick,
+      clipViewport,
+      dragViewport,
+      scaleViewport,
+      resizeSession,
+      showDotCursor,
+      background,
+      qualityLevel,
+      compressionLevel,
     } = this.props;
 
-    this.rfb = new RFB(this.canvas, url, opts);
+    /* The RFB constructor accepts `shared`, `credentials`, `repeaterID`,
+     * and `wsProtocols` as properties on its third argument.
+     */
 
-    this.rfb.scaleViewport = true;
+    this.rfb = new RFB(this.canvas, url, this.props);
+
+    /* These options are set as properties on the returned object. */
+
+    /* eslint-disable padding-line-between-statements */
+    if (viewOnly) this.rfb.viewOnly = viewOnly;
+    if (focusOnClick) this.rfb.focusOnClick = focusOnClick;
+    if (clipViewport) this.rfb.clipViewport = clipViewport;
+    if (dragViewport) this.rfb.dragViewport = dragViewport;
+    if (scaleViewport) this.rfb.scaleViewport = scaleViewport;
+    if (resizeSession) this.rfb.resizeSession = resizeSession;
+    if (showDotCursor) this.rfb.showDotCursor = showDotCursor;
+    if (background) this.rfb.background = background;
+    if (qualityLevel) this.rfb.qualityLevel = qualityLevel;
+    if (compressionLevel) this.rfb.compressionLevel = compressionLevel;
+    /* eslint-enable padding-line-between-statements */
+
+    /* Callback functions are installed as event listeners. */
 
     Object.entries(events).forEach(([event, propertyName]) => {
       if (propertyName in this.props && this.props[propertyName] != null) {
