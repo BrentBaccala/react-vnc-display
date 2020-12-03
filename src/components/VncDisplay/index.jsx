@@ -273,7 +273,12 @@ export default class VncDisplay extends Component {
   render() {
     return (
       <div
-        style={this.props.style}
+        style={
+          this.props.style || {
+            width: this.props.width,
+            height: this.props.height,
+          }
+        }
         ref={this.registerChild}
         onMouseEnter={this.handleMouseEnter}
         onMouseLeave={this.handleMouseLeave}
