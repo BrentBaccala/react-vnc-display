@@ -1,5 +1,13 @@
 import { Component } from 'react';
-import { arrayOf, string, bool, func, number, object } from 'prop-types';
+import {
+  arrayOf,
+  oneOfType,
+  string,
+  bool,
+  func,
+  number,
+  object,
+} from 'prop-types';
 import RFB from '@novnc/novnc/core/rfb';
 
 /**
@@ -54,13 +62,13 @@ export default class VncDisplay extends Component {
      * If `style` is specified, `style` takes precedence and `width` must
      * be set in `style`.  Default is 1280.
      */
-    width: number,
+    width: oneOfType([number, string]),
     /**
      * If `style` is not specified, set the height of the canvas element.
      * If `style` is specified, `style` takes precedence and `height` must
      * be set in `style`.  Default is 720.
      */
-    height: number,
+    height: oneOfType([number, string]),
     /**
      * Specify a list of WebSocket protocols this connection should support.
      */
