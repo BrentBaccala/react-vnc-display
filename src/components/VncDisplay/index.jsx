@@ -18,6 +18,24 @@ const events = {
 };
 
 /**
+ * Properties that map straight through into the noVNC object.
+ */
+
+// eslint-disable-next-line padding-line-between-statements
+const passthroughProperties = [
+  'viewOnly',
+  'focusOnClick',
+  'clipViewport',
+  'dragViewport',
+  'scaleViewport',
+  'resizeSession',
+  'showDotCursor',
+  'background',
+  'qualityLevel',
+  'compressionLevel',
+];
+
+/**
  * React component to connect and display a remote VNC connection.
  */
 export default class VncDisplay extends Component {
@@ -176,14 +194,24 @@ export default class VncDisplay extends Component {
     this.disconnect();
   }
 
-  componentWillReceiveProps(nextProps) {
+  componentDidUpdate(prevProps) {
     if (!this.rfb) {
       return;
     }
 
-    if (nextProps.scale !== this.props.scale) {
-      this.rfb.get_display().set_scale(nextProps.scale || 1);
-      this.get_mouse().set_scale(nextProps.scale || 1);
+    passthroughProperties.forEach(propertyName => {
+      if (
+        propertyName in this.props &&
+        this.props[propertyName] != null &&
+        this.props[propertyName] !== prevProps[propertyName]
+      ) {
+        this.rfb[propertyName] = this.props[propertyName];
+      }
+    });
+
+    if (prevProps.scale !== this.props.scale) {
+      this.rfb.get_display().set_scale(this.props.scale || 1);
+      this.get_mouse().set_scale(this.props.scale || 1);
     }
   }
 
@@ -203,40 +231,19 @@ export default class VncDisplay extends Component {
       return;
     }
 
-    const {
-      url,
-      viewOnly,
-      focusOnClick,
-      clipViewport,
-      dragViewport,
-      scaleViewport,
-      resizeSession,
-      showDotCursor,
-      background,
-      qualityLevel,
-      compressionLevel,
-    } = this.props;
-
     /* The RFB constructor accepts `shared`, `credentials`, `repeaterID`,
      * and `wsProtocols` as properties on its third argument.
      */
 
-    this.rfb = new RFB(this.canvas, url, this.props);
+    this.rfb = new RFB(this.canvas, this.props.url, this.props);
 
-    /* These options are set as properties on the returned object. */
+    /* These properties are set as properties on the returned RFB object. */
 
-    /* eslint-disable padding-line-between-statements */
-    if (viewOnly) this.rfb.viewOnly = viewOnly;
-    if (focusOnClick) this.rfb.focusOnClick = focusOnClick;
-    if (clipViewport) this.rfb.clipViewport = clipViewport;
-    if (dragViewport) this.rfb.dragViewport = dragViewport;
-    if (scaleViewport) this.rfb.scaleViewport = scaleViewport;
-    if (resizeSession) this.rfb.resizeSession = resizeSession;
-    if (showDotCursor) this.rfb.showDotCursor = showDotCursor;
-    if (background) this.rfb.background = background;
-    if (qualityLevel) this.rfb.qualityLevel = qualityLevel;
-    if (compressionLevel) this.rfb.compressionLevel = compressionLevel;
-    /* eslint-enable padding-line-between-statements */
+    passthroughProperties.forEach(propertyName => {
+      if (propertyName in this.props && this.props[propertyName] != null) {
+        this.rfb[propertyName] = this.props[propertyName];
+      }
+    });
 
     /* Callback functions are installed as event listeners. */
 
