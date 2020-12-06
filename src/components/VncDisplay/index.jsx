@@ -217,6 +217,16 @@ export default class VncDisplay extends Component {
       }
     });
 
+    /* See comment in connect() */
+
+    if (this.props.scaleViewport || this.props.clipViewport) {
+      // eslint-disable-next-line no-underscore-dangle
+      this.rfb._screen.style.overflow = 'hidden';
+    } else {
+      // eslint-disable-next-line no-underscore-dangle
+      this.rfb._screen.style.overflow = 'auto';
+    }
+
     if (prevProps.scale !== this.props.scale) {
       this.rfb.get_display().set_scale(this.props.scale || 1);
       this.get_mouse().set_scale(this.props.scale || 1);
@@ -244,6 +254,18 @@ export default class VncDisplay extends Component {
      */
 
     this.rfb = new RFB(this.canvas, this.props.url, this.props);
+
+    /* If we're trying to resize a desktop with scaleViewport set, a
+     * scrollbar might briefly appear and then disappear during the
+     * resize because this CSS overflow is 'auto'.  Instead, set it to
+     * be 'hidden' if we're in either mode (scale or clip) when no
+     * scrollbar should appear.  Probably a bug in noVNC.
+     */
+
+    if (this.props.scaleViewport || this.props.clipViewport) {
+      // eslint-disable-next-line no-underscore-dangle
+      this.rfb._screen.style.overflow = 'hidden';
+    }
 
     /* These properties are set as properties on the returned RFB object. */
 
