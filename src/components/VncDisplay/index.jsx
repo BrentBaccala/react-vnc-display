@@ -279,9 +279,7 @@ export default class VncDisplay extends Component {
 
     Object.entries(events).forEach(([event, propertyName]) => {
       if (propertyName in this.props && this.props[propertyName] != null) {
-        this.rfb.addEventListener(event, () => {
-          this.props[propertyName]();
-        });
+        this.rfb.addEventListener(event, this.props[propertyName]);
       }
     });
   };
