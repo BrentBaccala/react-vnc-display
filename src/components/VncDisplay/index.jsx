@@ -315,8 +315,14 @@ export default class VncDisplay extends Component {
           }
         }
         ref={this.registerChild}
-        onMouseEnter={this.handleMouseEnter}
-        onMouseLeave={this.handleMouseLeave}
+        /* eslint-disable */
+        onBlur={() => this.logMouseEvents && console.log('onBlur')}
+        onFocus={() => this.logMouseEvents && console.log('onFocus')}
+        onMouseEnter={() => this.logMouseEvents && console.log('onMouseEnter')}
+        onMouseLeave={() => this.logMouseEvents && console.log('onMouseLeave')}
+        onMouseOut={() => this.logMouseEvents && console.log('onMouseOut')}
+        onMouseOver={() => this.logMouseEvents && console.log('onMouseOver')}
+        /* eslint-enable */
       />
     );
   }
